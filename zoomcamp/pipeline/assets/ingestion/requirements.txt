@@ -1,0 +1,9 @@
+# Python dependencies for the ingestion asset
+pandas
+requests
+pyarrow
+python-dateutil
+# Example:
+# pandas==2.2.0
+# requests==2.31.0
+
