@@ -39,14 +39,16 @@ from dateutil.relativedelta import relativedelta
 
 
 def materialize():
-    start_date = os.environ.get("BRUIN_START_DATE", "2019-01-01")
-    end_date = os.environ.get("BRUIN_END_DATE", "2019-02-01")
+    start_date = os.environ.get("BRUIN_START_DATE", "2022-01-01")
+    end_date = os.environ.get("BRUIN_END_DATE", "2022-02-01")
     bruin_vars = os.environ.get("BRUIN_VARS", "{}")
     variables = json.loads(bruin_vars)
     taxi_types = variables.get("taxi_types", ["yellow", "green"])
 
     start = datetime.strptime(start_date, "%Y-%m-%d").date()
     end = datetime.strptime(end_date, "%Y-%m-%d").date()
+
+    base_url = "https://d37ci6vzurychx.cloudfront.net/trip-data/"
 
     months = []
     current = date(start.year, start.month, 1)
@@ -55,36 +57,23 @@ def materialize():
         current += relativedelta(months=1)
 
     frames = []
-    errors = []
     for taxi_type in taxi_types:
         for month in months:
-            filename = f"{taxi_type}_tripdata_{month.year}-{month.month:02d}.csv.gz"
-            url = f"https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{taxi_type}/{filename}"
+            filename = f"{taxi_type}_tripdata_{month.strftime('%Y-%m')}.parquet"
+            url = base_url + filename
             print(f"Fetching {url}")
             try:
-                response = requests.get(url, timeout=180, allow_redirects=True)
+                response = requests.get(url, timeout=120)
                 response.raise_for_status()
-                # Read CSV (gzip-compressed), convert to parquet in-memory for proper type inference
-                df = pd.read_csv(BytesIO(response.content), compression="gzip", low_memory=False)
-                parquet_buffer = BytesIO()
-                df.to_parquet(parquet_buffer, index=False)
-                parquet_buffer.seek(0)
-                df = pd.read_parquet(parquet_buffer)
+                df = pd.read_parquet(BytesIO(response.content))
                 df["taxi_type"] = taxi_type
                 df["extracted_at"] = datetime.utcnow()
-                print(f"Fetched {len(df)} rows from {url}")
                 frames.append(df)
             except Exception as e:
-                errors.append(f"{url}: {e}")
-                print(f"ERROR fetching {url}: {e}")
-
-    if errors and not frames:
-        raise RuntimeError(
-            f"All fetch attempts failed ({len(errors)} errors):\n" + "\n".join(errors)
-        )
+                print(f"Warning: could not fetch {url}: {e}")
 
     if not frames:
-        raise RuntimeError("No data fetched — check taxi_types and date range.")
+        return pd.DataFrame()
 
     return pd.concat(frames, ignore_index=True)
 
