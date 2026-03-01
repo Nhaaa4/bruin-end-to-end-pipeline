@@ -39,8 +39,8 @@ from dateutil.relativedelta import relativedelta
 
 
 def materialize():
-    start_date = os.environ.get("BRUIN_START_DATE", "2022-01-01")
-    end_date = os.environ.get("BRUIN_END_DATE", "2022-02-01")
+    start_date = os.environ.get("BRUIN_START_DATE", "2019-01-01")
+    end_date = os.environ.get("BRUIN_END_DATE", "2019-02-01")
     bruin_vars = os.environ.get("BRUIN_VARS", "{}")
     variables = json.loads(bruin_vars)
     taxi_types = variables.get("taxi_types", ["yellow", "green"])
@@ -59,7 +59,7 @@ def materialize():
     for taxi_type in taxi_types:
         for month in months:
             filename = f"{taxi_type}_tripdata_{month.year}-{month.month:02d}.csv.gz"
-            url = f"https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{taxi_type}_tripdata/{filename}"
+            url = f"https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{taxi_type}/{filename}"
             print(f"Fetching {url}")
             try:
                 response = requests.get(url, timeout=180, allow_redirects=True)
