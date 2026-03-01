@@ -48,8 +48,6 @@ def materialize():
     start = datetime.strptime(start_date, "%Y-%m-%d").date()
     end = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-    base_url = "https://d37ci6vzurychx.cloudfront.net/trip-data/"
-
     months = []
     current = date(start.year, start.month, 1)
     while current < end:
@@ -60,13 +58,18 @@ def materialize():
     errors = []
     for taxi_type in taxi_types:
         for month in months:
-            filename = f"{taxi_type}_tripdata_{month.strftime('%Y-%m')}.parquet"
-            url = base_url + filename
+            filename = f"{taxi_type}_tripdata_{month.year}-{month.month:02d}.csv.gz"
+            url = f"https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{taxi_type}_tripdata/{filename}"
             print(f"Fetching {url}")
             try:
-                response = requests.get(url, timeout=120)
+                response = requests.get(url, timeout=180, allow_redirects=True)
                 response.raise_for_status()
-                df = pd.read_parquet(BytesIO(response.content))
+                # Read CSV (gzip-compressed), convert to parquet in-memory for proper type inference
+                df = pd.read_csv(BytesIO(response.content), compression="gzip", low_memory=False)
+                parquet_buffer = BytesIO()
+                df.to_parquet(parquet_buffer, index=False)
+                parquet_buffer.seek(0)
+                df = pd.read_parquet(parquet_buffer)
                 df["taxi_type"] = taxi_type
                 df["extracted_at"] = datetime.utcnow()
                 print(f"Fetched {len(df)} rows from {url}")
