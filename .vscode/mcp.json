@@ -1,0 +1,12 @@
+{
+	"servers": {
+		"my-mcp-server-c148c635": {
+			"type": "stdio",
+			"command": "bruin",
+			"args": [
+				"mcp"
+			]
+		}
+	},
+	"inputs": []
+}
