@@ -57,6 +57,7 @@ def materialize():
         current += relativedelta(months=1)
 
     frames = []
+    errors = []
     for taxi_type in taxi_types:
         for month in months:
             filename = f"{taxi_type}_tripdata_{month.strftime('%Y-%m')}.parquet"
@@ -68,12 +69,19 @@ def materialize():
                 df = pd.read_parquet(BytesIO(response.content))
                 df["taxi_type"] = taxi_type
                 df["extracted_at"] = datetime.utcnow()
+                print(f"Fetched {len(df)} rows from {url}")
                 frames.append(df)
             except Exception as e:
-                print(f"Warning: could not fetch {url}: {e}")
+                errors.append(f"{url}: {e}")
+                print(f"ERROR fetching {url}: {e}")
+
+    if errors and not frames:
+        raise RuntimeError(
+            f"All fetch attempts failed ({len(errors)} errors):\n" + "\n".join(errors)
+        )
 
     if not frames:
-        return pd.DataFrame()
+        raise RuntimeError("No data fetched — check taxi_types and date range.")
 
     return pd.concat(frames, ignore_index=True)
 
