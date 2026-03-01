@@ -77,7 +77,8 @@ def materialize():
         current += relativedelta(months=1)
 
     if not frames:
-        return pd.DataFrame()
+        print("No data fetched for the given window — skipping load.")
+        return None
 
     return pd.concat(frames, ignore_index=True)
 
